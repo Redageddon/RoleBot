@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DSharpPlus;
@@ -33,29 +32,18 @@ namespace RoleBot
 
                 foreach (ReactionMessage reactionMessage in this.config.ReactionMessages[guildId])
                 {
+                    DiscordChannel channel = await client.GetChannelAsync(reactionMessage.RoleChannelId);
+                    DiscordMessage message = await channel.GetMessageAsync(reactionMessage.RoleMessageId);
+
                     foreach ((string emojiName, ulong roleId) in reactionMessage.ReactionsToRoles)
                     {
                         DiscordEmoji emoji = DiscordEmoji.FromName(client, emojiName);
                         DiscordRole role = e.Guild.GetRole(roleId);
 
                         reactionToRole.Add(emoji, role);
+                        await message.CreateReactionAsync(emoji);
                     }
                 }
-            }
-
-            foreach (ReactionMessage reactionMessage in this.config.ReactionMessages[guildId])
-            {
-                DiscordChannel channel = await client.GetChannelAsync(reactionMessage.RoleChannelId);
-                DiscordMessage message = await channel.GetMessageAsync(reactionMessage.RoleMessageId);
-
-                _ = Task.Run(async () =>
-                {
-                    foreach (DiscordEmoji emoji in reactionToRole.Keys)
-                    {
-                        await message.CreateReactionAsync(emoji);
-                        await Task.Delay(TimeSpan.FromSeconds(0.25));
-                    }
-                });
             }
         }
 
