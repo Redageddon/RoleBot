@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -30,26 +31,32 @@ namespace RoleBot
                 reactionToRole = new Dictionary<DiscordEmoji, DiscordRole>();
                 this.guildWithReactionRoles.Add(guildId, reactionToRole);
 
-                foreach ((string emojiName, ulong roleId) in this.config.ReactionMessages[guildId].ReactionsToRoles)
+                foreach (ReactionMessage reactionMessage in this.config.ReactionMessages[guildId])
                 {
-                    DiscordEmoji emoji = DiscordEmoji.FromName(client, emojiName);
-                    DiscordRole role = e.Guild.GetRole(roleId);
+                    foreach ((string emojiName, ulong roleId) in reactionMessage.ReactionsToRoles)
+                    {
+                        DiscordEmoji emoji = DiscordEmoji.FromName(client, emojiName);
+                        DiscordRole role = e.Guild.GetRole(roleId);
 
-                    reactionToRole.Add(emoji, role);
+                        reactionToRole.Add(emoji, role);
+                    }
                 }
             }
 
-            DiscordChannel channel = await client.GetChannelAsync(this.config.ReactionMessages[guildId].RoleChannelId);
-            DiscordMessage message = await channel.GetMessageAsync(this.config.ReactionMessages[guildId].RoleMessageId);
-
-            _ = Task.Run(async () =>
+            foreach (ReactionMessage reactionMessage in this.config.ReactionMessages[guildId])
             {
-                foreach (DiscordEmoji emoji in reactionToRole.Keys)
+                DiscordChannel channel = await client.GetChannelAsync(reactionMessage.RoleChannelId);
+                DiscordMessage message = await channel.GetMessageAsync(reactionMessage.RoleMessageId);
+
+                _ = Task.Run(async () =>
                 {
-                    await message.CreateReactionAsync(emoji);
-                    await Task.Delay(TimeSpan.FromSeconds(0.25));
-                }
-            });
+                    foreach (DiscordEmoji emoji in reactionToRole.Keys)
+                    {
+                        await message.CreateReactionAsync(emoji);
+                        await Task.Delay(TimeSpan.FromSeconds(0.25));
+                    }
+                });
+            }
         }
 
         private async Task MessageReactionAdded(DiscordClient client, MessageReactionAddEventArgs args)
@@ -57,8 +64,8 @@ namespace RoleBot
             ulong guildId = args.Guild.Id;
 
             if (!args.User.IsBot
-             && args.Channel.Id == this.config.ReactionMessages[guildId].RoleChannelId
-             && args.Message.Id == this.config.ReactionMessages[guildId].RoleMessageId)
+             && this.config.ReactionMessages[guildId].Any(e => e.RoleChannelId == args.Channel.Id)
+             && this.config.ReactionMessages[guildId].Any(e => e.RoleMessageId == args.Message.Id))
             {
                 DiscordMember user = await args.Guild.GetMemberAsync(args.User.Id);
                 await user.GrantRoleAsync(this.guildWithReactionRoles[guildId][args.Emoji]);
@@ -70,8 +77,8 @@ namespace RoleBot
             ulong guildId = args.Guild.Id;
 
             if (!args.User.IsBot
-             && args.Channel.Id == this.config.ReactionMessages[guildId].RoleChannelId
-             && args.Message.Id == this.config.ReactionMessages[guildId].RoleMessageId)
+             && this.config.ReactionMessages[guildId].Any(e => e.RoleChannelId == args.Channel.Id)
+             && this.config.ReactionMessages[guildId].Any(e => e.RoleMessageId == args.Message.Id))
             {
                 DiscordMember user = await args.Guild.GetMemberAsync(args.User.Id);
                 await user.RevokeRoleAsync(this.guildWithReactionRoles[guildId][args.Emoji]);

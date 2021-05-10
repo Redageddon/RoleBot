@@ -6,6 +6,6 @@ namespace RoleBot
     {
         public string Token { get; set; }
 
-        public Dictionary<ulong, ReactionMessage> ReactionMessages { get; set; }
+        public Dictionary<ulong, ReactionMessage[]> ReactionMessages { get; set; }
     }
 }
